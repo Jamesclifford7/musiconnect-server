@@ -1,24 +1,31 @@
 const express = require('express')
+const users = require('../store')
 const usersRouter = express.Router()
 const jsonParser = express.json()
-const users  = require('../store')
-
-// eventually: usersService
+// const users  = require('../store')
+const UsersService = require('../users/users-service')
 
 usersRouter
     .route('/api/users')
-    .get((req, res) => {
-        res.json(users)
+    .get((req, res, next) => {
+        const knexInstance = req.app.get('db');
+        UsersService.getAllUsers(knexInstance)
+            .then(users => {
+                if(!users) {
+                    return res.status(404).json({
+                        error: { message: 'users found' }
+                    })
+                }
+                res.json({
+                    users
+                }) 
+            })
+            .catch(next)
+        // before knex: res.json(users)
     })
-    .post(jsonParser, (req, res) => {
-        const { id, email, name, username, password, instrument, city, instagram, facebook, twitter, soundcloud, bandcamp, spotify, bio, img } = req.body
+    .post(jsonParser, (req, res, next) => {
+        const { email, name, username, password, instrument, city, instagram, facebook, twitter, soundcloud, bandcamp, spotify, bio, img } = req.body
 
-    
-        if(!id) {
-            return res
-                .status(400)
-                .send('id is required')
-        }
         
         if (!email) {
             return res
@@ -51,15 +58,7 @@ usersRouter
                 .send('password must include one number')
         }
 
-        /*
-        if (password.length < 6 && !password.match(/[A-Z]/) && !password.match(/\d+/g)) {
-            return res 
-                .status(400)
-                .send('password must be at least 6 characters long and include one uppercase letter and one number.')
-        } Didn't work? */
-
         const newUser = {
-            id, 
             email, 
             name, 
             username, 
@@ -76,37 +75,88 @@ usersRouter
             img
         }
 
+        const knexInstance = req.app.get('db');
+
+        UsersService.insertUser(knexInstance, newUser) 
+            .then(user => {
+                return user.id
+            })
+            .then(userId => {
+                console.log(userId)
+                UsersService.getById(knexInstance, userId)
+                    .then(user => {
+                        console.log(user)
+                        res
+                            .status(201)
+                            .location(`http://localhost:8000/api/users/${user.id}`)
+                            .json(user)
+                    })
+            })
+            .catch(next)
+        
+
+        /*
+
+        before knex:
+
         users.push(newUser)
 
         res
             .status(201)
             .location(`http://localhost:8000/api/users/${id}`)
-            .json(newUser)
+            .json(newUser) */
     })
 
 usersRouter
     .route('/api/users/:id')
-    .get((req, res) => {
+    .get((req, res, next) => {
         const { id } = req.params
 
-        const user = users.find(user => user.id == id)
+        const knexInstance = req.app.get('db');
 
-        console.log(id)
-        console.log(user)
+        UsersService.getById(knexInstance, id)
+            .then(user => {
+                // console.log(user)
+                if (!user) {
+                    return res.status(404).json({
+                        error: { message: `User doesn't exist` }
+                    })
+                }
+                res.json(user)
+            })
+            .catch(next) 
+
+        /*
+
+        before knex: 
+        
+        const user = users.find(user => user.id == id)
 
         if (!user) {
             res
                 .status(404)
                 .send('user not found')
-        } else {
-            res.json(user)
         }
+        
+        res.json(user)
+        */
     })
-    .delete((req, res) => {
+    .delete((req, res, next) => {
         const { id } = req.params
+        const knexInstance = req.app.get('db')
+
+        UsersService.deleteUser(knexInstance, id)
+            .then(() => {
+                res.status(204).end()
+            })
+            .catch(next)
+        
+        /* 
+        
+        before knex:
 
         const indexToRemove = users.findIndex(user => user.id == id)
-        // console.log(indexToRemove)
+        
         if (indexToRemove === -1) {
             return res
                 .status(404)
@@ -117,9 +167,9 @@ usersRouter
 
         return res
             .status(204)
-            .end();
+            .end(); */
     })
-    .patch(jsonParser, (req, res) => {
+    .patch(jsonParser, (req, res, next) => {
         const { id, email, name, username, password, instrument, city, instagram, facebook, twitter, soundcloud, bandcamp, spotify, bio, img } = req.body
 
         const updatedUser = {
@@ -140,10 +190,32 @@ usersRouter
             img: img
         }
 
-        const user = users.find(user => user.id == id)
-        
-        const indexToRemove = users.findIndex(user => user.id == id)
+        const knexInstance = req.app.get('db');
 
+        UsersService.updateUser(knexInstance, id, updatedUser)
+            .then(() => {
+                UsersService.getById(knexInstance, id)
+                .then(user => {
+                    // console.log(user)
+                    if (!user) {
+                        return res.status(404).json({
+                            error: { message: `User doesn't exist` }
+                        })
+                    }
+                    res.json(user)
+                })
+                // res.status(204).end()
+            })
+            .catch(next)
+
+        /*
+
+        before knex:
+       
+        // const user = users.find(user => user.id == id)
+        
+        // const indexToRemove = users.findIndex(user => user.id == id)
+        
         if (indexToRemove === -1) {
             return res
                 .status(404)
@@ -160,14 +232,31 @@ usersRouter
 
         return res
             .status(200)
-            .json(updatedUser)
+            .json(updatedUser) */
     })
 
 usersRouter
     .route('/api/login')
-    .get((req, res) => {
+    .get((req, res, next) => {
         const { username, password } = req.headers
-        
+        const knexInstance = req.app.get('db');
+        console.log(username, password)
+        UsersService.getUserByUsernameAndPassword(knexInstance, username, password)
+            .then(user => {
+                console.log(user)
+                if(!user) {
+                    return res.status(404).json({
+                        error: { message: `Could not find username/password` }
+                    })
+                }
+                res.json(user)
+            })
+            .catch(next)
+
+        /*
+
+        before knex: 
+
         const correctUser = users.find(user => {
             if (username === user.username && password === user.password) {
               return user
@@ -184,13 +273,47 @@ usersRouter
 
         return res
             .status(200)
-            .json(correctUser) 
+            .json(correctUser) */
     })
 
 usersRouter
     .route('/api/search')
-    .get((req, res) => {
-        const { instrument, city } = req.headers
+    .get((req, res, next) => {
+        const { instrument, city } = req.headers;
+        console.log(instrument, city)
+        const knexInstance = req.app.get('db');
+        UsersService.getAllUsers(knexInstance)
+            .then(users => {
+                if(!users) {
+                    return res.status(404).json({
+                        error: { message: 'users not found' }
+                    })
+                } else {
+                    return users
+                }
+            })
+            .then(users => {
+                let results = users.filter(user => {
+                    for (let i = 0; i < user.instrument.length; i++) {
+                        if (user.instrument[i] == instrument && user.city == city) {
+                          return user
+                        }
+                      }
+                })
+                if (!results.length) {
+                    return res.status(404).json({
+                        error: { message: 'search yielded no results' }
+                    })
+                } else {
+                    res.json(results)
+                }
+                // res.json({results})
+            })
+            .catch(next)
+
+        /*
+
+        before knex: 
 
         const results = users.filter(user => {
             for (let i = 0; i < user.instrument.length; i++) {
@@ -208,7 +331,7 @@ usersRouter
 
         return res
             .status(200)
-            .json(results)
+            .json(results) */
     })
 
 module.exports = usersRouter
