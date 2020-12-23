@@ -4,7 +4,7 @@ Server for https://musiconnect-app.vercel.app/
 
 ## API Overview
 
-### GET ```/api/login/ ```
+### GET ```javaScript /api/login/ ```
 
 ```
 // req.header
