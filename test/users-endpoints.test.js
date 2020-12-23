@@ -1,5 +1,4 @@
 const { expect } = require('chai')
-const supertest = require('supertest')
 const app = require('../src/app')
 const users = require('../src/STORE/users')
 const testUsers = require('../src/STORE/testUsers')
@@ -34,14 +33,17 @@ before(() => {
         .into('users')
         .insert(users)
 })
+
 /*
 beforeEach(() => {
     return db
         .into('users')
         .insert(users)
-}) 
+}) */
 
-afterEach(() => db('users').truncate()) */
+// afterEach(() => db('users').truncate()) 
+
+// afterEach('cleanup', () => db.raw('TRUNCATE TABLE users, cities RESTART IDENTITY;'));
 
 after(() => db('users').truncate())
 

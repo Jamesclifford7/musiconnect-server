@@ -24,7 +24,6 @@ usersRouter
     .post(jsonParser, (req, res, next) => {
         const { email, name, username, password, instrument, city, instagram, facebook, twitter, soundcloud, bandcamp, spotify, bio, img } = req.body
 
-        
         if (!email) {
             return res
                 .status(400)
