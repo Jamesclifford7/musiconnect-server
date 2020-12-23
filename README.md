@@ -6,7 +6,7 @@ Server for https://musiconnect-app.vercel.app/
 
 ### GET ```/api/login/ ```
 
-```
+```javascript
 // req.header
 {
   username: String, 
