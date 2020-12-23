@@ -1,8 +1,6 @@
-const users = require("../store")
 
 const UsersService = {
     getAllUsers(knex) {
-        // return knex.select('*').from('users')
         return knex('users').join('cities', 'users.city', '=', 'cities.id').select('users.id', 'users.email', 'users.name', 'users.username', 'users.password', 'users.instrument', 'cities.city', 'users.instagram', 'users.facebook', 'users.twitter', 'users.soundcloud', 'users.bandcamp', 'users.spotify', 'users.bio', 'users.img').orderBy('users.id')
     }, 
     insertUser(knex, newUser) {
@@ -15,7 +13,6 @@ const UsersService = {
             })
     }, 
     getById(knex, id) {
-        // return knex.from('users').select('*').where('id', id).first() 
         return knex('users').join('cities', 'users.city', '=', 'cities.id').select('users.id', 'users.email', 'users.name', 'users.username', 'users.password', 'users.instrument', 'cities.city', 'users.instagram', 'users.facebook', 'users.twitter', 'users.soundcloud', 'users.bandcamp', 'users.spotify', 'users.bio', 'users.img').where('users.id', id).first() 
     },
     deleteUser(knex, id) {
@@ -29,13 +26,17 @@ const UsersService = {
             .update(newUserFields)
             .select('*')
             .where('id', id)
-            
     },
     getUserByUsernameAndPassword(knex, username, password) {
         return knex('users').join('cities', 'users.city', '=', 'cities.id').select('users.id', 'users.email', 'users.name', 'users.username', 'users.password', 'users.instrument', 'cities.city', 'users.instagram', 'users.facebook', 'users.twitter', 'users.soundcloud', 'users.bandcamp', 'users.spotify', 'users.bio', 'users.img').where('username', username).andWhere('password', password).first()
-        // return knex.from('users').select('*').where('username', username).andWhere('password', password).first()
     }, 
-    
+    getUserByEmailAndPassword(knex, email, password) {
+        return knex('users').join('cities', 'users.city', '=', 'cities.id').select('users.id', 'users.email', 'users.name', 'users.username', 'users.password', 'users.instrument', 'cities.city', 'users.instagram', 'users.facebook', 'users.twitter', 'users.soundcloud', 'users.bandcamp', 'users.spotify', 'users.bio', 'users.img').where('email', email).andWhere('password', password).first()
+    },
+    getUserByEmail(knex, email) {
+        return knex('users').join('cities', 'users.city', '=', 'cities.id').select('users.id', 'users.email', 'users.name', 'users.username', 'users.password', 'users.instrument', 'cities.city', 'users.instagram', 'users.facebook', 'users.twitter', 'users.soundcloud', 'users.bandcamp', 'users.spotify', 'users.bio', 'users.img').where('users.email', email).first()
+    }
+    // get user by email
 }
 
 module.exports = UsersService

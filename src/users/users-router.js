@@ -1,8 +1,6 @@
 const express = require('express')
-const users = require('../store')
 const usersRouter = express.Router()
 const jsonParser = express.json()
-// const users  = require('../store')
 const UsersService = require('../users/users-service')
 
 usersRouter
@@ -13,7 +11,7 @@ usersRouter
             .then(users => {
                 if(!users) {
                     return res.status(404).json({
-                        error: { message: 'users found' }
+                        error: { message: 'no users found' }
                     })
                 }
                 res.json({
@@ -30,32 +28,32 @@ usersRouter
         if (!email) {
             return res
                 .status(400)
-                .send('email is required')
+                .send('Email is required')
         }
 
         if (!password) {
             return res
                 .status(400)
-                .send('email is required')
+                .send('Email is required')
         } 
 
         if (password.length < 6) {
             return res
                 .status(400)
-                .send('password must be at least 6 characters long')
+                .send('Password must be at least 6 characters long')
                 
         }
 
         if (!password.match(/[A-Z]/)) {
             return res
                 .status(400)
-                .send('password must include one uppercase letter')
+                .send('Password must include one uppercase letter')
         }
 
         if (!password.match(/\d+/g)) {
             return res  
                 .status(400)
-                .send('password must include one number')
+                .send('Password must include one number' )
         }
 
         const newUser = {
@@ -77,6 +75,38 @@ usersRouter
 
         const knexInstance = req.app.get('db');
 
+        // checking to make sure a duplicate account does not get added
+
+        UsersService.getUserByEmail(knexInstance, email)
+            .then(user => {
+                console.log(newUser)
+                if (!user) {
+                    return newUser
+                } else if (newUser.email === user.email) {
+                    return res.status(400).send('An account with this email already exists')
+                }
+                
+            })
+            .then(newUser => {
+                UsersService.insertUser(knexInstance, newUser)
+                    .then(user => {
+                        return user.id
+                    })
+                    .then(userId => {
+                        // console.log(userId)
+                        UsersService.getById(knexInstance, userId)
+                            .then(user => {
+                                console.log(user)
+                                res
+                                    .status(201)
+                                    .location(`http://localhost:8000/api/users/${user.id}`)
+                                    .json(user)
+                            })
+                    })
+                    .catch(next)
+            })
+
+        /*
         UsersService.insertUser(knexInstance, newUser) 
             .then(user => {
                 return user.id
@@ -144,6 +174,7 @@ usersRouter
     .delete((req, res, next) => {
         const { id } = req.params
         const knexInstance = req.app.get('db')
+        console.log(id)
 
         UsersService.deleteUser(knexInstance, id)
             .then(() => {
@@ -240,10 +271,28 @@ usersRouter
     .get((req, res, next) => {
         const { username, password } = req.headers
         const knexInstance = req.app.get('db');
-        console.log(username, password)
+        
         UsersService.getUserByUsernameAndPassword(knexInstance, username, password)
             .then(user => {
-                console.log(user)
+                if(!user) {
+                    UsersService.getUserByEmailAndPassword(knexInstance, username, password)
+                        .then(user => {
+                            if (!user) {
+                                return res.status(404).send('user not found')
+                            } else {
+                                return res.json(user)
+                            }
+                        })
+                } else {
+                    return res.json(user)
+                }
+            })
+            .catch(next)
+        /*
+        
+        UsersService.getUserByUsernameAndPassword(knexInstance, username, password)
+            .then(user => {
+                // console.log(user)
                 if(!user) {
                     return res.status(404).json({
                         error: { message: `Could not find username/password` }
@@ -280,7 +329,6 @@ usersRouter
     .route('/api/search')
     .get((req, res, next) => {
         const { instrument, city } = req.headers;
-        console.log(instrument, city)
         const knexInstance = req.app.get('db');
         UsersService.getAllUsers(knexInstance)
             .then(users => {

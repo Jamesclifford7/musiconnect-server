@@ -1,131 +1,201 @@
 const { expect } = require('chai')
 const supertest = require('supertest')
 const app = require('../src/app')
-const users = require('../src/store')
+const users = require('../src/STORE/users')
+const testUsers = require('../src/STORE/testUsers')
+require('dotenv').config()
+const UsersService = require('../src/users/users-service')
+const knex = require('knex')
+
+let testCities = [{id: 1, city: 'Los Angeles'}, {id: 2, city: 'New York'}, {id: 3, city: 'Nashville'}, {id: 4, city: 'Austin'}, {id: 5, city: 'Chicago'}]
+
+let db 
+
+before(() => {
+    db = knex({
+        client: 'pg', 
+        connection: process.env.TEST_DB_URL,
+    })
+    app.set('db', db)
+})
+
+before(() => db('cities').delete())
+
+before(() => {
+    return db 
+        .into('cities')
+        .insert(testCities)
+}) 
+
+before(() => db('users').truncate())
+
+before(() => {
+    return db
+        .into('users')
+        .insert(users)
+})
+/*
+beforeEach(() => {
+    return db
+        .into('users')
+        .insert(users)
+}) 
+
+afterEach(() => db('users').truncate()) */
+
+after(() => db('users').truncate())
+
+after(() => db.destroy())
 
 describe('GET /api/users', () => {
-    it('should return a list of users', () => {
-        return supertest(app)
-            .get('/api/users')
-            .expect(users)
+    it('should return a list of all users', () => {
+        return UsersService.getAllUsers(db)
+            .then(actual => {
+                expect(actual).to.eql(testUsers)
+            })
     })
 })
 
 describe('POST /api/users', () => {
-    it('should post a new user', () => {
+    it('should add a new user to the database', () => {
         const newUser = {
             id: 21,
             email: "prince@gmail.com",
             name: "Prince",
             username: "letsgocrazy7", 
             password: "Purplerain11", 
-            instrument: [1, 4, 5, 6], 
+            instrument: ["guitarist", "singer", "producer"], 
             city: 5, 
             instagram: "@princeofficial", 
             facebook: "", 
             twitter: "", 
-            soundcloud: "www.soundcloud.com/prince", 
-            bandcamp: "www.bandcamp.com/prince", 
-            spotify: "", 
+            soundcloud: "www.soundcloud.com", 
+            bandcamp: "www.bandcamp.com", 
+            spotify: "www.spotify.com", 
             bio: "tonight we're gonna party like its 1999", 
             img: ""
         }
 
-        return supertest(app)
-            .post('/api/users')
-            .send(newUser)
-            .expect(201)
-            .expect(res => {
-                expect(res.body.id).to.eql(newUser.id)
-                expect(res.body.email).to.eql(newUser.email)
-                expect(res.body.name).to.eql(newUser.name)
-                expect(res.body.username).to.eql(newUser.username)
-                expect(res.body.password).to.eql(newUser.password)
-                expect(res.body.instrument).to.eql(newUser.instrument)
-                expect(res.body.city).to.eql(newUser.city)
-                expect(res.body.instagram).to.eql(newUser.instagram)
-                expect(res.body.facebook).to.eql(newUser.facebook)
-                expect(res.body.twitter).to.eql(newUser.twitter)
-                expect(res.body.soundcloud).to.eql(newUser.soundcloud)
-                expect(res.body.bandcamp).to.eql(newUser.bandcamp)
-                expect(res.body.spotify).to.eql(newUser.spotify)
-                expect(res.body.bio).to.eql(newUser.bio)
-                expect(res.body.img).to.eql(newUser.img)
+        return UsersService.insertUser(db, newUser)
+            .then(actual => {
+                expect(actual).to.eql({
+                    id: 21, 
+                    email: newUser.email, 
+                    name: newUser.name, 
+                    username: newUser.username, 
+                    password: newUser.password, 
+                    instrument: newUser.instrument, 
+                    city: newUser.city, 
+                    instagram: newUser.instagram,
+                    facebook: newUser.facebook,  
+                    twitter: newUser.twitter, 
+                    soundcloud: newUser.soundcloud, 
+                    bandcamp: newUser.bandcamp, 
+                    spotify: newUser.spotify, 
+                    bio: newUser.bio, 
+                    img: newUser.img
+                }) 
             })
-            .then(res => {
-                supertest(app)
-                .get(`/api/users/${res.body.id}`)
-                .expect(res.body)
-            })
+            .then(() => {
+                // remove POSTed user for remaining tests
+                return UsersService.deleteUser(db, 21)
+            }) // is there a way to do this using beforeEach/afterEach ?
     })
 })
 
 describe('GET /api/users/:id', () => {
-    it('should return with the specified user', () => {
-        const userId = 2; 
-        const expectedUser = users[userId - 1]
-
-        return supertest(app)
-            .get(`/api/users/${userId}`)
-            .expect(200)
-            .expect(expectedUser)
+    it('should return a specific user by id', () => {
+        const thirdUser = testUsers[2]; 
+        return UsersService.getById(db, 3)
+            .then(actual => {
+                expect(actual).to.eql(thirdUser)
+            })
     })
 })
 
 describe('DELETE /api/users/:id', () => {
-    it('should delete the specified user', () => {
-        const idToRemove = 2; 
-        const expectedUsers = users.filter(user => user.id !== idToRemove) 
-
-        return supertest(app)
-            .delete(`/api/users/${idToRemove}`)
-            .expect(204)
-            .then(res => {
-                supertest(app)
-                .get('/api/users')
-                .expect(expectedUsers)
+    it('should delete specified user', () => {
+        const userId = 3; 
+        return UsersService.deleteUser(db, 3)
+            .then(() => UsersService.getAllUsers(db))
+            .then(allUsers => {
+                const expected = testUsers.filter(user => user.id !== userId); 
+                expect(allUsers).to.eql(expected)
             })
     })
 })
 
 describe('PATCH /api/users/:id', () => {
     it('should update specified user', () => {
-        const idToUpdate = 2
-        const updatedUser = {
-        id: 2,
-        email: 'steviewonder@gmail.com',
-        name: 'Steven Wonder',
-        username: 'higherground11', 
-        password: 'Superstition55', 
-        instrument: [4, 5, 6], 
-        city: 2, 
-        instagram: '@steviewonderofficial', 
-        facebook: '', 
-        twitter: '', 
-        soundcloud: 'www.soundcloud.com/steviewonder', 
-        bandcamp: 'www.bandcamp.com/steviewonder', 
-        spotify: 'https://open.spotify.com/artist/7guDJrEfX3qb6FEbdPA5qi?si=9VIJiMZIQkOp-aA07RWQ9Q', 
-        bio: 'Don\'t you worry about a thing.', 
-        img: ''
+        const idToUpdate = 5; 
+        const newUserData = {
+            id: 5,
+            email: 'slash@gmail.com',
+            name: 'Slash',
+            username: 'mrbrownstone02', 
+            password: 'Paradisecity3', 
+            instrument: ['guitarist'], 
+            city: 2, 
+            instagram: '@slashofficial', 
+            facebook: 'www.facebook.com', 
+            twitter: 'www.twitter.com', 
+            soundcloud: 'www.soundcloud.com', 
+            bandcamp: 'www.bandcamp.com', 
+            spotify: 'www.spotify.com', 
+            bio: 'Where do we go now?.', 
+            img:'https://guitar.com/wp-content/uploads/2020/07/Slash-Hero-Credit-Robert-Knight-Archive-Redferns@2560x1707.jpg'
         }
 
-        
-        const expectedUser = {
-            ...users[idToUpdate - 1], 
-            ...updatedUser
-        }
-
-        console.log(expectedUser)
-        console.log(updatedUser)
-
-        return supertest(app)
-            .patch(`/api/users/${idToUpdate}`)
-            .send(updatedUser)
-            // .expect(204)
-            .then(res => {
-                return supertest(app)
-                    .get(`/api/users/${idToUpdate}`)
-                    .expect(expectedUser)
+        return UsersService.updateUser(db, idToUpdate, newUserData)
+            .then(() => UsersService.getById(db, idToUpdate))
+            .then(user => {        
+                expect(user).to.eql({
+                    id: idToUpdate, 
+                    ...newUserData, 
+                    city: 'New York'
+                }) 
             })
+    })
+})
+
+describe('GET /api/login', () => {
+    it('should return user based on email or username and password', () => {
+        const firstUser = testUsers[0]
+
+        return UsersService.getUserByEmailAndPassword(db, firstUser.email, firstUser.password)
+            .then(user => {
+                expect(user).to.eql(firstUser)
+            })
+            .then(() => {
+                return UsersService.getUserByUsernameAndPassword(db, firstUser.username, firstUser.password)
+                    .then(user => {
+                        expect(user).to.eql(firstUser)
+                    })
+            })
+    })
+})
+
+describe('GET /api/search', () => {
+    it('should return users based on instrument and city', () => {
+        const nina = testUsers[19]
+        const instrument = 'singer'
+        const city = 'Chicago'
+        // console.log(nina)
+        return UsersService.getAllUsers(db)
+            .then(users => {
+                users.filter(user => {
+                    for (let i = 0; i < user.instrument.length; i++) {
+                        if (user.instrument[i] == instrument && user.city == city) {
+                            // return user; 
+                            expect(user).to.eql(nina)
+                        }
+                    }
+                })
+            })
+            /*
+            .then(user => {
+                console.log(user)
+                expect(user).to.eql(nina)
+            })  */ // not working?
     })
 })
