@@ -1,14 +1,14 @@
-const { expect } = require('chai')
-const app = require('../src/app')
-const users = require('../src/STORE/users')
-const testUsers = require('../src/STORE/testUsers')
-require('dotenv').config()
-const UsersService = require('../src/users/users-service')
-const knex = require('knex')
+const { expect } = require('chai'); 
+const app = require('../src/app'); 
+const users = require('../src/STORE/users'); 
+const testUsers = require('../src/STORE/testUsers'); 
+require('dotenv').config(); 
+const UsersService = require('../src/users/users-service'); 
+const knex = require('knex'); 
 
-let testCities = [{id: 1, city: 'Los Angeles'}, {id: 2, city: 'New York'}, {id: 3, city: 'Nashville'}, {id: 4, city: 'Austin'}, {id: 5, city: 'Chicago'}]
+let testCities = [{id: 1, city: 'Los Angeles'}, {id: 2, city: 'New York'}, {id: 3, city: 'Nashville'}, {id: 4, city: 'Austin'}, {id: 5, city: 'Chicago'}]; 
 
-let db 
+let db; 
 
 before(() => {
     db = knex({
@@ -16,38 +16,27 @@ before(() => {
         connection: process.env.TEST_DB_URL,
     })
     app.set('db', db)
-})
+}); 
 
-before(() => db('cities').delete())
+before(() => db('cities').delete()); 
 
 before(() => {
     return db 
         .into('cities')
         .insert(testCities)
-}) 
+}); 
 
-before(() => db('users').truncate())
+before(() => db('users').truncate()); 
 
 before(() => {
     return db
         .into('users')
         .insert(users)
-})
+}); 
 
-/*
-beforeEach(() => {
-    return db
-        .into('users')
-        .insert(users)
-}) */
+after(() => db('users').truncate()); 
 
-// afterEach(() => db('users').truncate()) 
-
-// afterEach('cleanup', () => db.raw('TRUNCATE TABLE users, cities RESTART IDENTITY;'));
-
-after(() => db('users').truncate())
-
-after(() => db.destroy())
+after(() => db.destroy()); 
 
 describe('GET /api/users', () => {
     it('should return a list of all users', () => {
@@ -56,7 +45,7 @@ describe('GET /api/users', () => {
                 expect(actual).to.eql(testUsers)
             })
     })
-})
+}); 
 
 describe('POST /api/users', () => {
     it('should add a new user to the database', () => {
@@ -76,7 +65,7 @@ describe('POST /api/users', () => {
             spotify: "www.spotify.com", 
             bio: "tonight we're gonna party like its 1999", 
             img: ""
-        }
+        }; 
 
         return UsersService.insertUser(db, newUser)
             .then(actual => {
@@ -101,9 +90,9 @@ describe('POST /api/users', () => {
             .then(() => {
                 // remove POSTed user for remaining tests
                 return UsersService.deleteUser(db, 21)
-            }) // is there a way to do this using beforeEach/afterEach ?
-    })
-})
+            }) 
+    }); 
+}); 
 
 describe('GET /api/users/:id', () => {
     it('should return a specific user by id', () => {
@@ -112,8 +101,8 @@ describe('GET /api/users/:id', () => {
             .then(actual => {
                 expect(actual).to.eql(thirdUser)
             })
-    })
-})
+    }); 
+}); 
 
 describe('DELETE /api/users/:id', () => {
     it('should delete specified user', () => {
@@ -124,8 +113,8 @@ describe('DELETE /api/users/:id', () => {
                 const expected = testUsers.filter(user => user.id !== userId); 
                 expect(allUsers).to.eql(expected)
             })
-    })
-})
+    }); 
+}); 
 
 describe('PATCH /api/users/:id', () => {
     it('should update specified user', () => {
@@ -146,7 +135,7 @@ describe('PATCH /api/users/:id', () => {
             spotify: 'www.spotify.com', 
             bio: 'Where do we go now?.', 
             img:'https://guitar.com/wp-content/uploads/2020/07/Slash-Hero-Credit-Robert-Knight-Archive-Redferns@2560x1707.jpg'
-        }
+        }; 
 
         return UsersService.updateUser(db, idToUpdate, newUserData)
             .then(() => UsersService.getById(db, idToUpdate))
@@ -157,12 +146,12 @@ describe('PATCH /api/users/:id', () => {
                     city: 'New York'
                 }) 
             })
-    })
-})
+    }); 
+}); 
 
 describe('GET /api/login', () => {
     it('should return user based on email or username and password', () => {
-        const firstUser = testUsers[0]
+        const firstUser = testUsers[0]; 
 
         return UsersService.getUserByEmailAndPassword(db, firstUser.email, firstUser.password)
             .then(user => {
@@ -174,32 +163,23 @@ describe('GET /api/login', () => {
                         expect(user).to.eql(firstUser)
                     })
             })
-    })
-})
+    }); 
+}); 
 
 describe('GET /api/search', () => {
     it('should return users based on instrument and city', () => {
-        const nina = testUsers[19]
-        const instrument = 'singer'
-        const city = 'Chicago'
-        // console.log(nina)
+        const nina = testUsers[19]; 
+        const instrument = 'singer'; 
+        const city = 'Chicago'; 
         return UsersService.getAllUsers(db)
             .then(users => {
                 users.filter(user => {
                     for (let i = 0; i < user.instrument.length; i++) {
                         if (user.instrument[i] == instrument && user.city == city) {
-                            // return user; 
                             expect(user).to.eql(nina)
                         }
                     }
                 })
             })
-            /*
-            .then(user => {
-                console.log(user)
-                expect(user).to.eql(nina)
-            })  */ // not working?
-    })
-})
-
-// hello
+    }); 
+}); 
