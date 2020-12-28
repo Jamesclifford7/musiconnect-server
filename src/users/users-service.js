@@ -2,6 +2,7 @@
 const UsersService = {
     getAllUsers(knex) {
         return knex('users').join('cities', 'users.city', '=', 'cities.id').select('users.id', 'users.email', 'users.name', 'users.username', 'users.password', 'users.instrument', 'cities.city', 'users.instagram', 'users.facebook', 'users.twitter', 'users.soundcloud', 'users.bandcamp', 'users.spotify', 'users.bio', 'users.img').orderBy('users.id')
+        // return knex('users').select('*')
     }, 
     insertUser(knex, newUser) {
         return knex
